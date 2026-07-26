@@ -2,36 +2,21 @@
  * ============================================================================
  * /api/analyze — Secure Gemini-powered image metadata endpoint
  * ============================================================================
- *
- * Receives ONE base64-encoded image at a time (the frontend loops through
- * a batch and calls this endpoint once per image — see script.js), sends it
- * to Gemini with a structured-output schema, and returns clean, normalized
- * stock-marketplace metadata as JSON.
- *
- * SECURITY: The Gemini API key lives only in process.env.GEMINI_API_KEY on
- * the server. It is never sent to, or readable by, the browser. This file
- * also intentionally does NOT send permissive CORS headers — the API and
- * the frontend are served from the same Vercel project/origin, so no
- * cross-origin access is needed, and leaving CORS closed stops other sites
- * from quietly spending your Gemini quota.
- *
- * This is a plain Vercel Node.js function (no framework). Vercel parses
- * JSON request bodies into `req.body` automatically — no extra setup
- * required. Function duration is configured in vercel.json.
- * ============================================================================
  */
 
 // ----------------------------------------------------------------------------
 // Configuration
 // ----------------------------------------------------------------------------
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+// Updated to active model supported by your API key
+const GEMINI_MODEL = 'gemini-2.0-flash';
+
 const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_RETRIES = 2; // retries on top of the first attempt
 const RETRY_BASE_DELAY_MS = 900;
-const REQUEST_TIMEOUT_MS = 28000; // stay under vercel.json's 30s maxDuration
+const REQUEST_TIMEOUT_MS = 28000; // stay under Vercel's default execution limit
 
-// Dynamic endpoint generator to prevent scope collisions
+// Dynamic endpoint generator
 function getGeminiEndpoint(modelName) {
   return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
 }
@@ -69,7 +54,6 @@ export default async function handler(req, res) {
     });
   }
 
-  // Rough safety check on payload size (base64 is ~33% larger than binary)
   const approxBytes = (image.length * 3) / 4;
   if (approxBytes > 15 * 1024 * 1024) {
     return res.status(413).json({
@@ -237,15 +221,13 @@ Field-by-field guidance:
 - copySpace: state where usable negative space exists for text overlay (e.g. "Yes - upper right third"), or "Minimal", or "None" if the frame is fully busy.
 - commercialUseSuggestions: 1-2 sentences on realistic commercial applications (e.g. website hero banners, ad campaigns, packaging, blog headers) specific to what is actually in the image.
 - editorialOrCommercial: exactly one of "Commercial", "Editorial", or "Both". Choose "Editorial" if there are recognizable brands/logos, trademarked characters, or identifiable people/private property that would need a release you cannot confirm. Otherwise "Commercial". Use "Both" only when genuinely ambiguous.
-- aiConfidenceScore: 0-100 honest confidence in this analysis given image clarity. Vary this realistically — an ambiguous abstract shot should score lower than an unambiguous, sharply composed product photo.
+- aiConfidenceScore: 0-100 honest confidence in this analysis given image clarity.
 - bestMarketplace: the single marketplace (Adobe Stock, Shutterstock, iStock, Freepik, Dreamstime, or Alamy) most likely to perform best for this specific image.
 - seoScore: 0-100 honest self-assessment of how well the title/description/keywords you produced are optimized for search discoverability.
-- keywordQualityScore: 0-100 honest self-assessment of the specificity, relevance, and diversity of the 50 keywords (not simply whether there are 50).
+- keywordQualityScore: 0-100 honest self-assessment of the specificity, relevance, and diversity of the 50 keywords.
 - metadataQualityScore: 0-100 honest overall assessment of how complete and marketplace-ready this metadata set is.
 
-Score fields must vary realistically with the actual image - do not default every score to 90+. A blurry, generic, or ambiguous image should score lower than a sharp, clearly composed, clearly licensable one.
-
-Respond with ONLY the JSON object described by the schema. No commentary, no markdown formatting, no text before or after it.`;
+Respond with ONLY the JSON object described by the schema. No commentary, no markdown formatting.`;
 }
 
 function buildResponseSchema() {
