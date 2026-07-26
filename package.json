@@ -1,0 +1,23 @@
+{
+  "name": "stock-metadata-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered stock marketplace metadata generator for photographers, illustrators, and vector artists. Upload up to 10 images and get titles, descriptions, keywords, categories, and export-ready metadata for Adobe Stock, Shutterstock, iStock, Freepik, and Dreamstime.",
+  "keywords": [
+    "stock-photography",
+    "metadata-generator",
+    "gemini-api",
+    "adobe-stock",
+    "shutterstock",
+    "seo-keywords",
+    "vercel-serverless"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  }
+}

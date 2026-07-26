@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- Set theme before first paint to avoid a flash of the wrong theme. -->
+  <script>
+    (function () {
+      try {
+        var stored = localStorage.getItem('smai-theme');
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var isDark = stored ? stored === 'dark' : prefersDark;
+        document.documentElement.classList.toggle('dark', isDark);
+      } catch (e) {
+        /* localStorage unavailable (private browsing, etc.) — default to light */
+      }
+    })();
+  </script>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stock Metadata AI — Professional AI Image Analysis for Stock Marketplaces</title>
+  <meta name="description" content="Upload up to 10 images and get marketplace-ready titles, descriptions, 50 keywords, categories, and quality scores for Adobe Stock, Shutterstock, iStock, Freepik, and Dreamstime — powered by Gemini." />
+  <meta name="theme-color" content="#F6F6F4" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0D0E10" media="(prefers-color-scheme: dark)" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='9' fill='none' stroke='%23DCA13E' stroke-width='2'/%3E%3Cpath d='M12 3v4M12 17v4M3 12h4M17 12h4' stroke='%23DCA13E' stroke-width='2'/%3E%3C/svg%3E" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS v4 (Play CDN) — zero-build, generates utility CSS live in the browser. -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <style type="text/tailwindcss">
+    /* Class-based dark mode: toggling `.dark` on <html> drives every dark: utility. */
+    @custom-variant dark (&:where(.dark, .dark *));
+
+    @theme {
+      --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+      --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+      --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+      /* "Light table" neutrals — deliberately gray, not warm cream, so it never
+         color-casts the images sitting on it (the way a real proofing surface wouldn't). */
+      --color-ink-950: #0D0E10;
+      --color-ink-900: #16171B;
+      --color-ink-800: #1E2023;
+      --color-ink-700: #2A2D31;
+      --color-ink-600: #43464C;
+      --color-ink-500: #6B6E74;
+      --color-ink-400: #9A9DA3;
+
+      --color-paper-50: #F6F6F4;
+      --color-paper-100: #EDEDEA;
+      --color-paper-200: #E1E1DC;
+      --color-paper-300: #CACAC4;
+
+      /* Safelight amber — the primary accent. */
+      --color-safelight-300: #F0CD8E;
+      --color-safelight-400: #E7B563;
+      --color-safelight-500: #DCA13E;
+      --color-safelight-600: #BD842A;
+      --color-safelight-700: #96671F;
+
+      /* Cyanotype teal — the secondary accent. */
+      --color-cyanotype-300: #A8DAD5;
+      --color-cyanotype-400: #6DBFB8;
+      --color-cyanotype-500: #47A69E;
+      --color-cyanotype-600: #368982;
+      --color-cyanotype-700: #276863;
+
+      /* Grease-pencil marks: red for reject/error, green for approve/done. */
+      --color-rust-400: #D57B67;
+      --color-rust-500: #C1543D;
+      --color-rust-600: #A23F2B;
+
+      --color-approve-400: #82B994;
+      --color-approve-500: #5B9A6F;
+      --color-approve-600: #457C57;
+    }
+  </style>
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="bg-paper-50 dark:bg-ink-950 text-ink-900 dark:text-paper-100 font-sans antialiased transition-colors duration-300">
+
+  <a href="#main" class="skip-link">Skip to content</a>
+
+  <!-- ============================================================
+       AMBIENT BACKGROUND (decorative, fixed, behind everything)
+  ============================================================ -->
+  <div class="fixed inset-0 -z-10 overflow-hidden bg-grid" aria-hidden="true">
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+  </div>
+
+  <!-- ============================================================
+       NAVBAR
+  ============================================================ -->
+  <header id="navbar" class="fixed top-0 inset-x-0 z-50 transition-all duration-300">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="glass mt-3 rounded-2xl px-4 sm:px-5 h-16 flex items-center justify-between">
+        <a href="#top" class="flex items-center gap-2.5 shrink-0" aria-label="Stock Metadata AI — home">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" class="text-safelight-500"/>
+            <path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="currentColor" stroke-width="1.6" class="text-safelight-500" stroke-linecap="round"/>
+            <circle cx="12" cy="12" r="2.5" fill="currentColor" class="text-cyanotype-500"/>
+          </svg>
+          <span class="font-display font-semibold text-[15px] sm:text-base tracking-tight text-ink-900 dark:text-paper-50">Stock Metadata AI</span>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-1" aria-label="Primary">
+          <a href="#features" class="nav-link">Features</a>
+          <a href="#how-it-works" class="nav-link">How it Works</a>
+          <a href="#pricing" class="nav-link">Pricing</a>
+          <a href="#faq" class="nav-link">FAQ</a>
+        </nav>
+
+        <div class="flex items-center gap-2">
+          <button id="theme-toggle" type="button" class="icon-btn" aria-label="Toggle dark mode">
+            <svg id="theme-icon-sun" class="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+            </svg>
+            <svg id="theme-icon-moon" class="h-[18px] w-[18px] hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/>
+            </svg>
+          </button>
+
+          <button data-scroll-to="upload" class="hidden sm:inline-flex btn-primary btn-sm">
+            Get Started
+          </button>
+
+          <button id="mobile-menu-btn" type="button" class="icon-btn md:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="mobile-menu">
+            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <nav id="mobile-menu" class="mobile-menu md:hidden glass mt-2 rounded-2xl overflow-hidden" aria-label="Mobile">
+        <div class="flex flex-col p-2">
+          <a href="#features" class="nav-link-mobile">Features</a>
+          <a href="#how-it-works" class="nav-link-mobile">How it Works</a>
+          <a href="#pricing" class="nav-link-mobile">Pricing</a>
+          <a href="#faq" class="nav-link-mobile">FAQ</a>
+          <button data-scroll-to="upload" class="btn-primary btn-sm mt-2 mx-2 justify-center">Get Started</button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- ============================================================
+         HERO
+    ============================================================ -->
+    <section id="top" class="relative pt-36 pb-20 sm:pt-44 sm:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden">
+      <div class="max-w-7xl mx-auto grid lg:grid-cols-2 gap-14 lg:gap-8 items-center">
+        <div class="reveal" data-animation="fade-up">
+          <span class="eyebrow">
+            <span class="dot"></span> Stock metadata, automated
+          </span>
+          <h1 class="mt-5 font-display font-semibold text-[2.5rem] leading-[1.08] sm:text-5xl sm:leading-[1.08] lg:text-[3.4rem] lg:leading-[1.05] tracking-tight text-ink-950 dark:text-paper-50">
+            Metadata for every frame, <span class="text-gradient">without the busywork.</span>
+          </h1>
+          <p class="mt-6 text-lg text-ink-600 dark:text-ink-400 max-w-xl leading-relaxed">
+            Upload up to 10 images and get marketplace-ready titles, descriptions, 50 keywords, and categories for Adobe Stock, Shutterstock, iStock, Freepik, and Dreamstime — reviewed, scored, and exportable in minutes.
+          </p>
+          <div class="mt-9 flex flex-wrap items-center gap-3">
+            <button data-scroll-to="upload" class="btn-primary btn-lg btn-ripple">
+              Load your images
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+            <button data-scroll-to="how-it-works" class="btn-ghost btn-lg">
+              See how it works
+            </button>
+          </div>
+          <p class="mt-8 font-mono text-xs text-ink-500 dark:text-ink-500 tracking-wide">
+            24 metadata fields · 50 keywords per image · TXT / CSV / JSON export
+          </p>
+        </div>
+
+        <!-- Signature element: a "developing metadata" mock panel, framed like a contact-strip frame -->
+        <div class="relative reveal" data-animation="scale" style="animation-delay:.15s">
+          <div class="sprocket-rail sprocket-rail-left hidden sm:block" aria-hidden="true"></div>
+          <div class="sprocket-rail sprocket-rail-right hidden sm:block" aria-hidden="true"></div>
+
+          <div class="glass-strong rounded-3xl p-5 sm:p-6 max-w-sm mx-auto shadow-2xl shadow-ink-950/10 dark:shadow-black/50">
+            <div class="flex items-center gap-3 pb-4 mb-4 border-b border-ink-900/8 dark:border-paper-50/10">
+              <div class="h-14 w-14 rounded-xl shrink-0" style="background:linear-gradient(135deg, var(--color-safelight-400), var(--color-cyanotype-500));"></div>
+              <div class="min-w-0">
+                <p class="font-mono text-[11px] tracking-wide text-ink-500 dark:text-ink-400 truncate">harvest-market-03.jpg</p>
+                <p class="font-display font-semibold text-sm text-ink-900 dark:text-paper-50">Frame 03 · Analyzing…</p>
+              </div>
+              <span class="ml-auto h-2 w-2 rounded-full bg-safelight-500 pulse-dot shrink-0"></span>
+            </div>
+
+            <div class="space-y-4 text-sm">
+              <div class="demo-row" style="animation-delay:.5s">
+                <p class="field-label">Title</p>
+                <p class="text-ink-800 dark:text-paper-100 leading-snug">Farmers Market Stall With Fresh Vegetables at Golden Hour</p>
+              </div>
+              <div class="demo-row" style="animation-delay:.9s">
+                <p class="field-label">Keywords</p>
+                <div class="flex flex-wrap gap-1.5">
+                  <span class="chip">farmers market</span>
+                  <span class="chip">organic produce</span>
+                  <span class="chip">golden hour</span>
+                  <span class="chip chip-muted">+47 more</span>
+                </div>
+              </div>
+              <div class="demo-row grid grid-cols-3 gap-2" style="animation-delay:1.3s">
+                <div class="score-mini"><span>SEO</span><b>94</b></div>
+                <div class="score-mini"><span>Keywords</span><b>91</b></div>
+                <div class="score-mini"><span>Confidence</span><b>88</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         MARKETPLACE STRIP
+    ============================================================ -->
+    <section class="px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20">
+      <div class="max-w-5xl mx-auto text-center">
+        <p class="font-mono text-xs uppercase tracking-wider text-ink-500 dark:text-ink-500 mb-6">
+          Metadata tuned for the marketplaces you already sell on
+        </p>
+        <div class="flex flex-wrap items-center justify-center gap-x-10 gap-y-4">
+          <span class="wordmark">Adobe Stock</span>
+          <span class="wordmark">Shutterstock</span>
+          <span class="wordmark">iStock</span>
+          <span class="wordmark">Freepik</span>
+          <span class="wordmark">Dreamstime</span>
+          <span class="wordmark">Alamy</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         UPLOAD / "FRAME LOADER"
+    ============================================================ -->
+    <section id="upload" class="px-4 sm:px-6 lg:px-8 py-16 sm:py-20 scroll-mt-24">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center max-w-xl mx-auto mb-10 reveal" data-animation="fade-up">
+          <span class="eyebrow"><span class="dot"></span> Frame loader</span>
+          <h2 class="mt-4 font-display font-semibold text-3xl sm:text-4xl tracking-tight text-ink-950 dark:text-paper-50">Upload your images</h2>
+          <p class="mt-3 text-ink-600 dark:text-ink-400">
+            Drag in up to 10 JPG, PNG, or WEBP files. Nothing is written to a database until you export it yourself.
+          </p>
+        </div>
+
+        <div id="dropzone" class="dropzone reveal" data-animation="fade-up" style="animation-delay:.1s" tabindex="0" role="button" aria-label="Upload images: click or press Enter to browse, or drag and drop files here">
+          <input id="file-input" type="file" accept="image/jpeg,image/png,image/webp" multiple class="sr-only" aria-hidden="true" tabindex="-1" />
+          <svg class="h-9 w-9 mx-auto text-safelight-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 18a4.5 4.5 0 0 1-.9-8.9 5 5 0 0 1 9.8-1.7A4 4 0 0 1 17 15.9"/><path d="M12 12v7M9 16l3-3 3 3"/>
+          </svg>
+          <p class="mt-4 font-display font-medium text-ink-900 dark:text-paper-50">
+            Drag images here, or <span class="text-safelight-600 dark:text-safelight-400 underline underline-offset-2">click to browse</span>
+          </p>
+          <p class="mt-1.5 font-mono text-xs text-ink-500 dark:text-ink-500">JPG, PNG, or WEBP · up to 10 images</p>
+        </div>
+
+        <p id="upload-error" class="mt-3 text-sm text-rust-600 dark:text-rust-400 hidden" role="alert" aria-live="assertive"></p>
+
+        <div id="preview-wrap" class="mt-8 hidden">
+          <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <p id="preview-count" class="font-mono text-xs uppercase tracking-wider text-ink-500 dark:text-ink-500">0 of 10 frames loaded</p>
+            <button id="btn-clear-all" type="button" class="btn-text">
+              <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6h12Z"/></svg>
+              Clear all
+            </button>
+          </div>
+          <div id="preview-strip" class="preview-strip" aria-live="polite"></div>
+          <div class="mt-7 flex justify-center">
+            <button id="btn-analyze" type="button" class="btn-primary btn-lg btn-ripple" disabled>
+              <svg id="btn-analyze-icon" class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v3m0 12v3m9-9h-3M6 12H3m15.4-6.4-2.1 2.1M8.7 15.7l-2.1 2.1m0-11.4 2.1 2.1m9.7 9.7-2.1-2.1"/></svg>
+              <span id="btn-analyze-label">Analyze images</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         DASHBOARD / RESULTS
+    ============================================================ -->
+    <section id="dashboard" class="dashboard hidden px-4 sm:px-6 lg:px-8 py-16 sm:py-20 scroll-mt-24">
+      <div class="max-w-5xl mx-auto">
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+          <h2 class="font-display font-semibold text-3xl tracking-tight text-ink-950 dark:text-paper-50">Your results</h2>
+          <div id="export-all-bar" class="export-bar hidden">
+            <span class="font-mono text-xs uppercase tracking-wider text-ink-500 dark:text-ink-500 mr-1">Export all:</span>
+            <button id="btn-export-all-txt" type="button" class="btn-outline btn-xs">TXT</button>
+            <button id="btn-export-all-csv" type="button" class="btn-outline btn-xs">CSV</button>
+            <button id="btn-export-all-json" type="button" class="btn-outline btn-xs">JSON</button>
+          </div>
+        </div>
+
+        <div class="glass rounded-2xl p-5 mb-8">
+          <div class="flex items-center justify-between mb-2.5">
+            <p id="progress-text" class="text-sm font-medium text-ink-800 dark:text-paper-100" role="status" aria-live="polite">Preparing…</p>
+            <p id="progress-fraction" class="font-mono text-xs text-ink-500 dark:text-ink-500">0 / 0</p>
+          </div>
+          <div class="progress-track">
+            <div id="progress-bar-fill" class="progress-fill" style="width:0%"></div>
+          </div>
+        </div>
+
+        <div id="results-list" class="space-y-4"></div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         FEATURES
+    ============================================================ -->
+    <section id="features" class="px-4 sm:px-6 lg:px-8 py-16 sm:py-24 scroll-mt-20">
+      <div class="max-w-6xl mx-auto">
+        <div class="max-w-xl mb-14 reveal" data-animation="fade-up">
+          <span class="eyebrow"><span class="dot"></span> Why creators switch</span>
+          <h2 class="mt-4 font-display font-semibold text-3xl sm:text-4xl tracking-tight text-ink-950 dark:text-paper-50">
+            Built around the fields marketplaces actually expect
+          </h2>
+          <p class="mt-3 text-ink-600 dark:text-ink-400">Not a generic caption generator — a metadata schema built from real submission requirements.</p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div class="feature-card reveal" data-animation="fade-up">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></div>
+            <h3 class="feature-title">Batch processing</h3>
+            <p class="feature-body">Analyze up to 10 images in one pass, each handled individually so quality never drops as the batch grows.</p>
+          </div>
+          <div class="feature-card reveal" data-animation="fade-up" style="animation-delay:.08s">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg></div>
+            <h3 class="feature-title">Marketplace-ready taxonomy</h3>
+            <p class="feature-body">Every result maps to Adobe Stock, Shutterstock, and Freepik's real category systems, not a generic guess at one.</p>
+          </div>
+          <div class="feature-card reveal" data-animation="fade-up" style="animation-delay:.16s">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 7h.01M3 11.5 11.5 3H19a2 2 0 0 1 2 2v7.5L12.5 21 3 11.5Z"/></svg></div>
+            <h3 class="feature-title">50 targeted keywords</h3>
+            <p class="feature-body">Ordered by relevance and phrased the way buyers actually search — not stuffed for volume.</p>
+          </div>
+          <div class="feature-card reveal" data-animation="fade-up">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z"/><path d="M12 7v5l3.5 2"/></svg></div>
+            <h3 class="feature-title">Built-in quality scores</h3>
+            <p class="feature-body">SEO, keyword quality, metadata completeness, and AI confidence — scored per image so you know what to double-check.</p>
+          </div>
+          <div class="feature-card reveal" data-animation="fade-up" style="animation-delay:.08s">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v13m0 0-4-4m4 4 4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg></div>
+            <h3 class="feature-title">One-click export</h3>
+            <p class="feature-body">Download everything as TXT, CSV, or JSON — ready to paste into your marketplace's bulk uploader.</p>
+          </div>
+          <div class="feature-card reveal" data-animation="fade-up" style="animation-delay:.16s">
+            <div class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7V5a2 2 0 0 1 2-2h2M4 17v2a2 2 0 0 0 2 2h2m8-16h2a2 2 0 0 1 2 2v2m-4 14h2a2 2 0 0 0 2-2v-2"/><path d="M9 12h6"/></svg></div>
+            <h3 class="feature-title">Stateless by design</h3>
+            <p class="feature-body">This endpoint doesn't touch a database — each image is analyzed and the result returned, nothing retained server-side.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         HOW IT WORKS
+    ============================================================ -->
+    <section id="how-it-works" class="px-4 sm:px-6 lg:px-8 py-16 sm:py-24 scroll-mt-20">
+      <div class="max-w-5xl mx-auto">
+        <div class="max-w-xl mb-14 reveal" data-animation="fade-up">
+          <span class="eyebrow"><span class="dot"></span> The process</span>
+          <h2 class="mt-4 font-display font-semibold text-3xl sm:text-4xl tracking-tight text-ink-950 dark:text-paper-50">Three steps, start to export</h2>
+        </div>
+        <div class="grid md:grid-cols-3 gap-8 md:gap-6">
+          <div class="reveal" data-animation="fade-up">
+            <p class="step-number">01</p>
+            <h3 class="feature-title mt-3">Load your frames</h3>
+            <p class="feature-body mt-2">Drag in up to 10 images. Each one lands on the contact strip with its file size and a remove option.</p>
+          </div>
+          <div class="reveal" data-animation="fade-up" style="animation-delay:.1s">
+            <p class="step-number">02</p>
+            <h3 class="feature-title mt-3">The AI develops the metadata</h3>
+            <p class="feature-body mt-2">Every image is analyzed individually against a 24-field schema built from real marketplace requirements.</p>
+          </div>
+          <div class="reveal" data-animation="fade-up" style="animation-delay:.2s">
+            <p class="step-number">03</p>
+            <h3 class="feature-title mt-3">Export and upload</h3>
+            <p class="feature-body mt-2">Copy individual fields, or export the whole batch as TXT, CSV, or JSON formatted for your marketplace's bulk uploader.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         PRICING (UI only — no billing wired up)
+    ============================================================ -->
+    <section id="pricing" class="px-4 sm:px-6 lg:px-8 py-16 sm:py-24 scroll-mt-20">
+      <div class="max-w-6xl mx-auto">
+        <div class="text-center max-w-xl mx-auto mb-14 reveal" data-animation="fade-up">
+          <span class="eyebrow"><span class="dot"></span> Pricing</span>
+          <h2 class="mt-4 font-display font-semibold text-3xl sm:text-4xl tracking-tight text-ink-950 dark:text-paper-50">Simple plans for any size batch</h2>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+          <div class="price-card reveal" data-animation="fade-up">
+            <h3 class="font-display font-semibold text-lg text-ink-900 dark:text-paper-50">Single Roll</h3>
+            <p class="text-sm text-ink-500 dark:text-ink-400 mt-1">For trying it out</p>
+            <p class="mt-6 font-display font-semibold text-4xl text-ink-950 dark:text-paper-50">$0</p>
+            <ul class="mt-6 space-y-3 text-sm">
+              <li class="price-item">Up to 10 images per batch</li>
+              <li class="price-item">All 24 metadata fields</li>
+              <li class="price-item">TXT / CSV / JSON export</li>
+              <li class="price-item">Community support</li>
+            </ul>
+            <button data-scroll-to="upload" class="btn-outline w-full justify-center mt-8">Start free</button>
+          </div>
+
+          <div class="price-card price-card-featured reveal" data-animation="scale" style="animation-delay:.1s">
+            <span class="price-badge">Most popular</span>
+            <h3 class="font-display font-semibold text-lg text-ink-900 dark:text-paper-50">Contact Sheet</h3>
+            <p class="text-sm text-ink-500 dark:text-ink-400 mt-1">For working creators</p>
+            <p class="mt-6 font-display font-semibold text-4xl text-ink-950 dark:text-paper-50">$19<span class="text-base font-normal text-ink-500 dark:text-ink-400">/mo</span></p>
+            <ul class="mt-6 space-y-3 text-sm">
+              <li class="price-item">Everything in Single Roll</li>
+              <li class="price-item">Unlimited batches</li>
+              <li class="price-item">Priority analysis speed</li>
+              <li class="price-item">Saved export templates</li>
+              <li class="price-item">Email support</li>
+            </ul>
+            <button data-scroll-to="upload" class="btn-primary w-full justify-center mt-8">Get started</button>
+          </div>
+
+          <div class="price-card reveal" data-animation="fade-up" style="animation-delay:.2s">
+            <h3 class="font-display font-semibold text-lg text-ink-900 dark:text-paper-50">Studio</h3>
+            <p class="text-sm text-ink-500 dark:text-ink-400 mt-1">For teams and agencies</p>
+            <p class="mt-6 font-display font-semibold text-4xl text-ink-950 dark:text-paper-50">$49<span class="text-base font-normal text-ink-500 dark:text-ink-400">/mo</span></p>
+            <ul class="mt-6 space-y-3 text-sm">
+              <li class="price-item">Everything in Contact Sheet</li>
+              <li class="price-item">Multi-seat accounts</li>
+              <li class="price-item">Bulk history &amp; re-export</li>
+              <li class="price-item">Custom category mapping</li>
+              <li class="price-item">Priority support</li>
+            </ul>
+            <button data-scroll-to="upload" class="btn-outline w-full justify-center mt-8">Contact sales</button>
+          </div>
+        </div>
+        <p class="text-center text-xs text-ink-500 dark:text-ink-500 mt-8 font-mono">
+          Pricing shown for illustration — this template ships without billing wired up. Connect your own payment provider to charge for access.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         FAQ
+    ============================================================ -->
+    <section id="faq" class="px-4 sm:px-6 lg:px-8 py-16 sm:py-24 scroll-mt-20">
+      <div class="max-w-3xl mx-auto">
+        <div class="max-w-xl mb-10 reveal" data-animation="fade-up">
+          <span class="eyebrow"><span class="dot"></span> FAQ</span>
+          <h2 class="mt-4 font-display font-semibold text-3xl sm:text-4xl tracking-tight text-ink-950 dark:text-paper-50">Questions, answered</h2>
+        </div>
+
+        <div class="glass rounded-2xl px-5 sm:px-6 reveal" data-animation="fade-up">
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-1">
+              <span>Which marketplaces does this work with?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-1" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>Every result includes categories mapped to Adobe Stock, Shutterstock, and Freepik's real taxonomies, plus a general category, subcategory, and a recommendation for which marketplace to prioritize. It also works fine for iStock, Dreamstime, and Alamy — you'll just map the general category yourself.</p>
+              </div>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-2">
+              <span>What image formats and sizes are supported?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-2" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>JPG, PNG, and WEBP, up to 10 images per batch. Each image is automatically resized in your browser before it's sent for analysis, so even large camera originals upload quickly.</p>
+              </div>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-3">
+              <span>Are my images stored anywhere?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-3" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>No. This app has no database. Each image is sent directly to Google's Gemini API for analysis and the result is returned to your browser — nothing is saved on the server in between. Google's own handling of API requests is governed by their Gemini API terms.</p>
+              </div>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-4">
+              <span>How accurate are the keywords and categories?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-4" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>Every field is AI-generated and should be reviewed before you submit it to a marketplace. The AI confidence, SEO, and keyword quality scores are there to flag results worth a closer look before you export.</p>
+              </div>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-5">
+              <span>Can I re-run analysis if a result looks off?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-5" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>Yes. Each image has its own retry option, so a failed or unconvincing result can be re-analyzed on its own without re-running the whole batch.</p>
+              </div>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-6">
+              <span>What does this cost to run myself?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-6" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>Hosting on Vercel's free tier is normally enough for personal use. The Gemini API is billed separately by Google based on usage — check current rates on their pricing page before running large batches.</p>
+              </div>
+            </div>
+          </div>
+          <div class="faq-item">
+            <button type="button" class="faq-question" aria-expanded="false" aria-controls="faq-panel-7">
+              <span>Can I change which AI model it uses?</span>
+              <svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div id="faq-panel-7" class="faq-answer">
+              <div class="faq-answer-inner">
+                <p>Yes — the model name is a single constant at the top of api/analyze.js. Change it and redeploy; the rest of the request format stays the same.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         CTA BANNER
+    ============================================================ -->
+    <section class="px-4 sm:px-6 lg:px-8 pb-24">
+      <div class="max-w-5xl mx-auto">
+        <div class="cta-banner reveal" data-animation="fade-up">
+          <div class="sprocket-rail sprocket-rail-left sprocket-rail-banner hidden md:block" aria-hidden="true"></div>
+          <div class="sprocket-rail sprocket-rail-right sprocket-rail-banner hidden md:block" aria-hidden="true"></div>
+          <h2 class="font-display font-semibold text-3xl sm:text-4xl tracking-tight text-paper-50">Stop hand-typing keywords.</h2>
+          <p class="mt-3 text-paper-200/80 max-w-md mx-auto">Load your next batch and get marketplace-ready metadata before your coffee's cold.</p>
+          <button data-scroll-to="upload" class="btn-light btn-lg mt-8 btn-ripple">Analyze your images</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================================================
+       FOOTER
+  ============================================================ -->
+  <footer class="px-4 sm:px-6 lg:px-8 pt-14 pb-8 border-t border-ink-900/8 dark:border-paper-50/8">
+    <div class="max-w-7xl mx-auto">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div class="lg:col-span-2">
+          <div class="flex items-center gap-2.5">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6" class="text-safelight-500"/>
+              <path d="M12 3v4M12 17v4M3 12h4M17 12h4" stroke="currentColor" stroke-width="1.6" class="text-safelight-500" stroke-linecap="round"/>
+              <circle cx="12" cy="12" r="2.5" fill="currentColor" class="text-cyanotype-500"/>
+            </svg>
+            <span class="font-display font-semibold text-ink-900 dark:text-paper-50">Stock Metadata AI</span>
+          </div>
+          <p class="mt-3 text-sm text-ink-500 dark:text-ink-400 max-w-xs">Metadata for every frame — built for photographers, illustrators, and vector artists selling on stock marketplaces.</p>
+        </div>
+        <div>
+          <p class="footer-heading">Product</p>
+          <ul class="mt-4 space-y-2.5">
+            <li><a href="#features" class="footer-link">Features</a></li>
+            <li><a href="#how-it-works" class="footer-link">How it Works</a></li>
+            <li><a href="#pricing" class="footer-link">Pricing</a></li>
+            <li><a href="#faq" class="footer-link">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="footer-heading">Resources</p>
+          <ul class="mt-4 space-y-2.5">
+            <li><a href="https://ai.google.dev/gemini-api/docs" target="_blank" rel="noopener noreferrer" class="footer-link">Gemini API docs</a></li>
+            <li><a href="https://vercel.com/docs" target="_blank" rel="noopener noreferrer" class="footer-link">Vercel docs</a></li>
+            <li><span class="footer-link footer-link-static">README.md in this repo</span></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mt-12 pt-6 border-t border-ink-900/8 dark:border-paper-50/8 flex flex-col sm:flex-row items-center justify-between gap-3">
+        <p class="text-xs text-ink-500 dark:text-ink-500">© <span id="footer-year"></span> Stock Metadata AI. Open-source template — customize and deploy as your own.</p>
+        <p class="font-mono text-xs text-ink-500 dark:text-ink-500">Powered by Gemini 2.5 Flash</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Toast notifications -->
+  <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
