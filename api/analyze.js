@@ -31,7 +31,7 @@
 // scheduled shutdown date of October 16, 2026, in favor of "gemini-3.5-flash".
 // The model name is isolated in this single constant — to upgrade, change
 // this one line (the request/response shape is unchanged between versions).
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-2.5-flash-lite';
 
 // Legacy "generateContent" endpoint — Google explicitly recommends staying on
 // this endpoint (rather than the newer Interactions API) for stateless,
