@@ -25,23 +25,16 @@
 // Configuration
 // ----------------------------------------------------------------------------
 
-// NOTE ON MODEL CHOICE:
-// "gemini-2.5-flash" is used here because it was explicitly requested for
-// this project. As of mid-2026 Google has marked it as deprecated with a
-// scheduled shutdown date of October 16, 2026, in favor of "gemini-3.5-flash".
-// The model name is isolated in this single constant — to upgrade, change
-// this one line (the request/response shape is unchanged between versions).
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent`;
-
-// Legacy "generateContent" endpoint — Google explicitly recommends staying on
-// this endpoint (rather than the newer Interactions API) for stateless,
-// single-turn production workloads like this one.
-const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-
+const GEMINI_MODEL = 'gemini-2.5-flash';
 const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_RETRIES = 2; // retries on top of the first attempt
 const RETRY_BASE_DELAY_MS = 900;
 const REQUEST_TIMEOUT_MS = 28000; // stay under vercel.json's 30s maxDuration
+
+// Dynamic endpoint generator to prevent scope collisions
+function getGeminiEndpoint(modelName) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent`;
+}
 
 // ----------------------------------------------------------------------------
 // Handler
@@ -76,9 +69,7 @@ export default async function handler(req, res) {
     });
   }
 
-  // Rough safety check on payload size (base64 is ~33% larger than binary).
-  // The client resizes images before sending, so this should rarely trigger —
-  // it exists as a guardrail against misuse of the endpoint directly.
+  // Rough safety check on payload size (base64 is ~33% larger than binary)
   const approxBytes = (image.length * 3) / 4;
   if (approxBytes > 15 * 1024 * 1024) {
     return res.status(413).json({
@@ -150,10 +141,11 @@ async function analyzeImageWithGemini({ base64Image, mimeType, apiKey }) {
 async function callGemini(requestBody, apiKey) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const endpoint = getGeminiEndpoint(GEMINI_MODEL);
 
   let response;
   try {
-    response = await fetch(GEMINI_ENDPOINT, {
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -174,7 +166,6 @@ async function callGemini(requestBody, apiKey) {
     const errorPayload = await safeReadJson(response);
     const message = errorPayload?.error?.message || `Gemini API error (status ${response.status}).`;
     const err = new Error(message);
-    // Retry on rate limits and server-side errors; fail fast on bad requests/auth.
     err.retryable = response.status === 429 || response.status >= 500;
     err.statusCode = response.status === 429 ? 429 : 502;
     throw err;
